@@ -45,10 +45,14 @@ class Ja(object):
         self.loop = MainLoop(self.view, unhandled_input=self.keypress)
 
     def keypress(self, key):
-        raise ExitMainLoop()
+        self.print("unhandled key press {}".format(key))
 
     def print(self, text, level=TWITTER):
         self.log.append((datetime.now(), level, text))
+        try:
+            self.chatview.update()
+        except AttributeError:
+            pass
 
     def run(self, args):
         self.__setup_ui()

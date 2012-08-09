@@ -23,15 +23,14 @@ from urwid import *
 class SystemMessagesWalker(ListWalker):
     def __init__(self, ja):
         self.ja = ja
-        self.focus = 0
         self.lines = []
+        self.last = 0
 
     def get_focus(self):
-        return self._get_at(self.focus)
+        return self._get_at(self.last)
 
     def set_focus(self, focus):
-        self.focus = focus
-        self._modified()
+        return None
 
     def get_next(self, position):
         return self._get_at(position + 1)
@@ -46,6 +45,7 @@ class SystemMessagesWalker(ListWalker):
         if index >= len(self.lines):
             for i in range(len(self.lines), len(self.ja.log)):
                 self.lines.append(self._format(self.ja.log[i]))
+            self.last = len(self.lines) - 1
 
         if index >= len(self.lines):
             return None, None
@@ -53,12 +53,15 @@ class SystemMessagesWalker(ListWalker):
         return self.lines[index], index
 
     def _format(self, message):
-        text = ">>> {0[2]}".format(message)
-        return Text(text)
+        text = Text(">>> {0[2]}".format(message))
+        return text
 
 class MessagesWidget(ListBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def update(self):
+        self._invalidate()
 
 class SystemMessagesWidget(MessagesWidget):
     def __init__(self, ja):
