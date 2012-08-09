@@ -31,10 +31,17 @@ ANXIETY = 2
 FRUSTRE = 3
 PANIC   = 4
 
+def command(func):
+    func.__command = True
+    return func
+
 class Ja(object):
     def __init__(self, storage):
         self.storage = storage
         self.log = []
+        self.plugins = {}
+        self.commands = {}
+        self.exiting = False
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
@@ -44,8 +51,60 @@ class Ja(object):
         self.view = Frame(self.chatview, footer=self.inputview, focus_part='footer')
         self.loop = MainLoop(self.view, unhandled_input=self.keypress)
 
+    def __setup_commands(self):
+        for p in dir(self):
+            if getattr(getattr(self, p), '__command', False):
+                self.add_command(p, getattr(self, p))
+        for pname in self.plugins:
+            plugin = self.plugins[pname]
+            for cn in dir(plugin):
+                cc = getattr(plugin, cc)
+                if getattr(cc, '__command', False):
+                    self.add_command("{}.{}".format(pname, cn), cc)
+
+    def add_command(self, name, proc):
+        if name in self.commands:
+            self.print("command {} conflicts with existing command".format(name))
+        else:
+            self.commands[name] = proc
+
+    def execute(self, lines):
+        if lines.startswith('/'):
+            args = lines[1:].split(' ', 1)
+            command = args[0]
+            arg = args[1] if len(args) > 1 else None
+            if command in self.commands:
+                try:
+                    self.commands[command](arg)
+                except Exception as e:
+                    self.print("error executing command {}: {}".format(command, type(e)))
+                    raise
+            else:
+                self.print("unknown command {}".format(command))
+        else:
+            self.print("messages are not yet implemented")
+        if self.exiting:
+            raise ExitMainLoop()
+
+    @command
+    def help(self, arg):
+        """help on ja commands"""
+        self.print("available commands:")
+        maxlength = max(map(lambda x: len(x), self.commands.keys()))
+        for name in sorted(self.commands.keys()):
+            doc = self.commands[name].__doc__
+            if not doc:
+                doc = "no documentation available"
+            else:
+                doc = doc.split("\n", 1)[0]
+            self.print("  {} -- {}".format(name.ljust(maxlength), doc))
+
     def keypress(self, key):
-        self.print("unhandled key press {}".format(key))
+        if key == 'enter':
+            self.execute(self.inputview.get_edit_text())
+            self.inputview.set_edit_text("")
+        else:
+            self.print("unhandled key press {}".format(key))
 
     def print(self, text, level=TWITTER):
         self.log.append((datetime.now(), level, text))
@@ -54,8 +113,14 @@ class Ja(object):
         except AttributeError:
             pass
 
+    @command
+    def quit(self, arg):
+        """quit ja"""
+        self.exiting = True
+
     def run(self, args):
         self.__setup_ui()
+        self.__setup_commands()
         return self.loop.run()
 
 def ja(*args, **kwargs):
