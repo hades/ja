@@ -24,3 +24,5 @@ class Storage(object):
 class DirectoryStorage(Storage):
     def __init__(self, directory):
         self.directory = directory
+
+# vim:sw=4:ts=4:et

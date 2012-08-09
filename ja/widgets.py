@@ -66,3 +66,5 @@ class MessagesWidget(ListBox):
 class SystemMessagesWidget(MessagesWidget):
     def __init__(self, ja):
         super().__init__(SystemMessagesWalker(ja))
+
+# vim:sw=4:ts=4:et

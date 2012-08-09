@@ -32,3 +32,5 @@ parser.add_option("-d", "--dir", dest="directory", help="directory for configs, 
 options, args = parser.parse_args()
 
 ja(DirectoryStorage(options.directory)).run(args)
+
+# vim:sw=4:ts=4:et
