@@ -59,10 +59,13 @@ class Ja(object):
                 self.add_command(p, getattr(self, p))
         for pname in self.plugins:
             plugin = self.plugins[pname]
-            for cn in dir(plugin):
-                cc = getattr(plugin, cc)
-                if getattr(cc, '__command', False):
-                    self.add_command("{}.{}".format(pname, cn), cc)
+            self.__setup_plugin_commands(plugin, pname)
+
+    def __setup_plugin_commands(self, plugin, pname):
+        for cn in dir(plugin):
+            cc = getattr(plugin, cn)
+            if getattr(cc, '__command', False):
+                self.add_command("{}.{}".format(pname, cn), cc)
 
     def add_command(self, name, proc):
         if name in self.commands:
@@ -119,8 +122,15 @@ class Ja(object):
         arg = args[1] if len(args) > 1 else None
         try:
             __import__(modname)
-            sys.modules[modname].instance(self, arg)
-            self.print("loaded plugin {}".format(modname))
+            plugin = sys.modules[modname].instance(self, arg)
+            if plugin:
+                name = plugin.name
+                if name in self.plugins:
+                    self.print("plugin {} already loaded".format(name))
+                else:
+                    self.plugins[name] = plugin
+                    self.__setup_plugin_commands(plugin, name)
+                    self.print("loaded plugin {} from {}".format(name, modname))
         except ImportError as e:
             self.print("cannot find plugin {}: {}".format(modname, e))
         except AttributeError as e:
