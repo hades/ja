@@ -18,6 +18,8 @@
 # If you are unable to read that file, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
+
 from datetime import datetime
 from urwid import *
 
@@ -105,6 +107,24 @@ class Ja(object):
             self.inputview.set_edit_text("")
         else:
             self.print("unhandled key press {}".format(key))
+
+    @command
+    def load(self, arg):
+        """load ja plugin"""
+        if not arg:
+            self.print("load: specify a plugin to load")
+            return
+        args = arg.split(' ', 1)
+        modname = args[0]
+        arg = args[1] if len(args) > 1 else None
+        try:
+            __import__(modname)
+            sys.modules[modname].instance(self, arg)
+            self.print("loaded plugin {}".format(modname))
+        except ImportError as e:
+            self.print("cannot find plugin {}: {}".format(modname, e))
+        except AttributeError as e:
+            self.print("{} is not a ja plugin: {}".format(modname, e))
 
     def print(self, text, level=TWITTER):
         self.log.append((datetime.now(), level, text))
