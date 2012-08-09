@@ -21,6 +21,7 @@
 from datetime import datetime
 from urwid import *
 
+from ja import __version__ as version
 from ja.widgets import SystemMessagesWidget
 
 DEBUG   = -1
@@ -34,7 +35,8 @@ class Ja(object):
     def __init__(self, storage):
         self.storage = storage
         self.log = []
-        self.print("ja")
+        self.print("This is ja version {}".format(version))
+        self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
     def __setup_ui(self):
         self.chatview = SystemMessagesWidget(self)
