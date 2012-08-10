@@ -25,6 +25,7 @@ from threading import Lock
 from urwid import *
 
 from ja import __version__ as version
+from ja.logging import setupLogging
 from ja.widgets import SystemMessagesWidget
 
 DEBUG   = -1
@@ -71,6 +72,7 @@ class Ja(object):
         self.inputview = Edit("> ")
         self.view = Frame(self.chatview, footer=self.inputview, focus_part='footer')
         self.loop = MainLoop(self.view, unhandled_input=self.keypress)
+        setupLogging(self)
         self.__update_inputview()
 
     def __setup_commands(self):
