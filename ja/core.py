@@ -55,8 +55,10 @@ class Ja(object):
         self._lock = Lock()
         self.storage = storage
         self.log = []
+        self.password_cb = []
         self.plugins = {}
         self.commands = {}
+        self.connections = []
         self.exiting = False
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
@@ -109,7 +111,19 @@ class Ja(object):
         else:
             self.commands[name] = proc
 
+    def add_connection(self, connection):
+        self.connections.append(connection)
+
+    def ask_password(self, question, callback):
+        self.password_cb.insert(0, (question, callback))
+        self.__update_inputview()
+
     def execute(self, lines):
+        if self.password_cb:
+            question, cb = self.password_cb.pop()
+            cb(lines)
+            self.__update_inputview()
+            return
         if lines.startswith('/'):
             args = lines[1:].split(' ', 1)
             command = args[0]
@@ -173,14 +187,14 @@ class Ja(object):
 
     def print(self, text, level=TWITTER):
         self.log.append((datetime.now(), level, text))
-        try:
-            self.chatview.update()
-        except AttributeError:
-            pass
+        self.__refresh_chatview()
 
     @command
     def quit(self, arg):
         """quit ja"""
+        for c in self.connections:
+            c.disconnect()
+        del self.connections
         self.exiting = True
 
     def run(self, args):
