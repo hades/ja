@@ -18,6 +18,8 @@
 # If you are unable to read that file, see <http://www.gnu.org/licenses/>.
 #
 
+from threading import Thread
+
 from sleekxmpp import ClientXMPP
 from sleekxmpp.exceptions import IqError, IqTimeout
 
@@ -38,12 +40,18 @@ def reconnect_on_timeout(func):
     wrapper.__name__ = func.__name__
     return wrapper
 
+class ClientXMPPWrapper(ClientXMPP):
+    def abort(self):
+        self.stop.set()
+
 class XmppConnection(Connection):
     def __init__(self, jid):
         self.ja = ja()
         self.jid = jid
         self.password = ''
         self.client = None
+        self.conn_thread = None
+        self.conn_in_progress = False
 
     def connect(self, password=None):
         if password:
@@ -54,14 +62,30 @@ class XmppConnection(Connection):
             self.ja.ask_password("Password for {}".format(self.jid), self.connect)
             return
         if not self.client:
-            self.client = ClientXMPP(self.jid, self.password)
+            if hasattr(ClientXMPP, 'abort'):
+                self.client = ClientXMPP(self.jid, self.password)
+            else:
+                self.client = ClientXMPPWrapper(self.jid, self.password)
+            self.client.add_event_handler('connected', self._handle_connected)
             self.client.add_event_handler('session_start', self._handle_session_start)
             self.client.add_event_handler('disconnected', self._handle_disconnected)
-        self.client.connect()
-        self.client.process(block=False)
+        if self.conn_in_progress:
+            self.ja.print("xmpp: connection attempt in progress")
+            return
+        self._join_conn_thread()
+        self.conn_thread = Thread(target=self.client.connect)
+        self.conn_in_progress = True
+        self.conn_thread.start()
 
     def disconnect(self):
+        if self.conn_in_progress:
+            self.client.abort()
+        self._join_conn_thread()
         self.client.disconnect(wait=True)
+
+    def _handle_connected(self, data):
+        self.client.process(block=False)
+        self.conn_in_progress = False
 
     def _handle_disconnected(self, data):
         self.ja.print("xmpp: JID {} disconnected".format(self.jid))
@@ -73,6 +97,11 @@ class XmppConnection(Connection):
             self._parse_roster(self.client.get_roster()['roster'])
         except IqError as e:
             self.ja.print("xmpp: error retrieving roster {}".format(e))
+
+    def _join_conn_thread(self):
+        if self.conn_thread:
+            self.conn_thread.join()
+            self.conn_thread = None
 
     def _parse_roster(self, roster):
         roster = roster.get_items()
