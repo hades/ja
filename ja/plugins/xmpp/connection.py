@@ -23,6 +23,20 @@ from sleekxmpp.exceptions import IqError, IqTimeout
 
 from ja.connection import Connection
 from ja.core import ja
+from ja.people import Contact
+
+def reconnect_on_timeout(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except IqTimeout:
+            self.ja.print("xmpp: request timed out, reconnecting")
+            self.disconnect()
+            self.connect()
+    wrapper.__doc__ = func.__doc__
+    wrapper.__module__ = func.__module__
+    wrapper.__name__ = func.__name__
+    return wrapper
 
 class XmppConnection(Connection):
     def __init__(self, jid):
@@ -52,7 +66,22 @@ class XmppConnection(Connection):
     def _handle_disconnected(self, data):
         self.ja.print("xmpp: JID {} disconnected".format(self.jid))
 
+    @reconnect_on_timeout
     def _handle_session_start(self, data):
         self.ja.print("xmpp: connected to JID {}".format(self.jid))
+        try:
+            self._parse_roster(self.client.get_roster()['roster'])
+        except IqError as e:
+            self.ja.print("xmpp: error retrieving roster {}".format(e))
+
+    def _parse_roster(self, roster):
+        roster = roster.get_items()
+        for item in roster:
+            contact = Contact(item, 'xmpp')
+            if 'name' in roster[item]:
+                contact.name = roster[item]['name']
+            if 'groups' in roster[item]:
+                contact.groups = set(roster[item]['groups'])
+            self.ja.add_contact(contact, self)
 
 # vim:sw=4:ts=4:et
