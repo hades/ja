@@ -41,7 +41,7 @@ class XmppConnection(Connection):
             return
         if not self.client:
             self.client = ClientXMPP(self.jid, self.password)
-            self.client.add_event_handler('connected', self._handle_connected)
+            self.client.add_event_handler('session_start', self._handle_session_start)
             self.client.add_event_handler('disconnected', self._handle_disconnected)
         self.client.connect()
         self.client.process(block=False)
@@ -49,10 +49,10 @@ class XmppConnection(Connection):
     def disconnect(self):
         self.client.disconnect(wait=True)
 
-    def _handle_connected(self, data):
-        self.ja.print("xmpp: connected to JID {}".format(self.jid))
-
     def _handle_disconnected(self, data):
         self.ja.print("xmpp: JID {} disconnected".format(self.jid))
+
+    def _handle_session_start(self, data):
+        self.ja.print("xmpp: connected to JID {}".format(self.jid))
 
 # vim:sw=4:ts=4:et
