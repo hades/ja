@@ -26,6 +26,7 @@ from urwid import *
 
 from ja import __version__ as version
 from ja.logging import setupLogging
+from ja.people import People
 from ja.widgets import SystemMessagesWidget
 
 DEBUG   = -1
@@ -60,6 +61,7 @@ class Ja(object):
         self.commands = {}
         self.connections = []
         self.exiting = False
+        self.people = People()
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
@@ -113,6 +115,9 @@ class Ja(object):
 
     def add_connection(self, connection):
         self.connections.append(connection)
+
+    def add_contact(self, contact, connection):
+        self.people.add_contact(contact, connection)
 
     def ask_password(self, question, callback):
         self.password_cb.insert(0, (question, callback))
