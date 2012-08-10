@@ -97,6 +97,7 @@ class Ja(object):
     def __refresh_chatview(self):
         try:
             self.chatview.update()
+            self.loop.draw_screen()
         except AttributeError:
             pass
 
