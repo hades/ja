@@ -21,6 +21,7 @@
 import sys
 
 from datetime import datetime
+from threading import Lock
 from urwid import *
 
 from ja import __version__ as version
@@ -37,8 +38,20 @@ def command(func):
     func.__command = True
     return func
 
+def threadprotect(func):
+    def wrapper(self, *args, **kwargs):
+        self._lock.acquire()
+        res = func(self, *args, **kwargs)
+        self._lock.release()
+        return res
+    wrapper.__doc__ = func.__doc__
+    wrapper.__module__ = func.__module__
+    wrapper.__name__ = func.__name__
+    return wrapper
+
 class Ja(object):
     def __init__(self, storage):
+        self._lock = Lock()
         self.storage = storage
         self.log = []
         self.plugins = {}
@@ -47,11 +60,18 @@ class Ja(object):
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
+    @threadprotect
+    def __input(self):
+        input = self.inputview.get_edit_text()
+        self.inputview.set_edit_text("")
+        return input
+
     def __setup_ui(self):
         self.chatview = SystemMessagesWidget(self)
         self.inputview = Edit("> ")
         self.view = Frame(self.chatview, footer=self.inputview, focus_part='footer')
         self.loop = MainLoop(self.view, unhandled_input=self.keypress)
+        self.__update_inputview()
 
     def __setup_commands(self):
         for p in dir(self):
@@ -66,6 +86,20 @@ class Ja(object):
             cc = getattr(plugin, cn)
             if getattr(cc, '__command', False):
                 self.add_command("{}.{}".format(pname, cn), cc)
+
+    @threadprotect
+    def __refresh_chatview(self):
+        try:
+            self.chatview.update()
+        except AttributeError:
+            pass
+
+    @threadprotect
+    def __update_inputview(self):
+        if self.password_cb:
+            self.inputview.set_caption("{}: ".format(self.password_cb[-1][0]))
+        else:
+            self.inputview.set_caption("> ")
 
     def add_command(self, name, proc):
         if name in self.commands:
@@ -106,8 +140,7 @@ class Ja(object):
 
     def keypress(self, key):
         if key == 'enter':
-            self.execute(self.inputview.get_edit_text())
-            self.inputview.set_edit_text("")
+            self.execute(self.__input())
         else:
             self.print("unhandled key press {}".format(key))
 
