@@ -25,9 +25,10 @@ from threading import Lock
 from urwid import *
 
 from ja import __version__ as version
+from ja.chat import Chat
 from ja.logging import setupLogging
 from ja.people import People
-from ja.widgets import SystemMessagesWidget
+from ja.widgets import SystemMessagesWidget, ChatWidget
 
 DEBUG   = -1
 TWITTER = 0
@@ -51,6 +52,17 @@ def threadprotect(func):
     wrapper.__name__ = func.__name__
     return wrapper
 
+def redraw_screen(func):
+    def wrapper(self, *args, **kwargs):
+        res = func(self, *args, **kwargs)
+        if hasattr(self, 'loop'):
+            self.loop.draw_screen()
+        return res
+    wrapper.__doc__ = func.__doc__
+    wrapper.__module__ = func.__module__
+    wrapper.__name__ = func.__name__
+    return wrapper
+
 class Ja(object):
     def __init__(self, storage):
         self._lock = Lock()
@@ -62,6 +74,7 @@ class Ja(object):
         self.connections = []
         self.exiting = False
         self.people = People()
+        self.chats = []
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
@@ -72,9 +85,9 @@ class Ja(object):
         return input
 
     def __setup_ui(self):
-        self.chatview = SystemMessagesWidget(self)
+        self.sysview = SystemMessagesWidget(self)
         self.inputview = Edit("> ")
-        self.view = Frame(self.chatview, footer=self.inputview, focus_part='footer')
+        self.view = Frame(self.sysview, footer=self.inputview, focus_part='footer')
         self.loop = MainLoop(self.view, unhandled_input=self.keypress)
         setupLogging(self)
         self.__update_inputview()
@@ -94,10 +107,10 @@ class Ja(object):
                 self.add_command("{}.{}".format(pname, cn), cc)
 
     @threadprotect
-    def __refresh_chatview(self):
+    @redraw_screen
+    def __refresh_sysview(self):
         try:
-            self.chatview.update()
-            self.loop.draw_screen()
+            self.sysview.update()
         except AttributeError:
             pass
 
@@ -193,7 +206,7 @@ class Ja(object):
 
     def print(self, text, level=TWITTER):
         self.log.append((datetime.now(), level, text))
-        self.__refresh_chatview()
+        self.__refresh_sysview()
 
     @command
     def quit(self, arg):
@@ -203,10 +216,30 @@ class Ja(object):
         del self.connections
         self.exiting = True
 
+    @redraw_screen
+    def receive_message(self, message):
+        for chat in self.chats:
+            if chat.accept_message(message):
+                return
+        chat = Chat(message=message)
+        chat.widget = ChatWidget(chat)
+        self.chats.append(chat)
+        self.print("created new window {} for chat with {}".format(len(self.chats)-1, chat.contact))
+
     def run(self, args):
         self.__setup_ui()
         self.__setup_commands()
         return self.loop.run()
+
+    @command
+    @redraw_screen
+    def window(self, arg):
+        """switch to window with given number"""
+        if arg == "system":
+            self.view.set_body(self.sysview)
+        else:
+            wid = int(arg)
+            self.view.set_body(self.chats[wid].widget)
 
 def ja(*args, **kwargs):
     if not hasattr(ja, 'instance'):

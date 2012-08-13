@@ -56,4 +56,10 @@ class Contact(object):
         self.connections = set()
         self.groups = set()
 
+    def __eq__(self, other):
+        return self.id == other.id and self.source == other.source
+
+    def __hash__(self):
+        return hash((self.id, self.source))
+
 # vim:sw=4:ts=4:et

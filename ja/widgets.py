@@ -20,10 +20,8 @@
 
 from urwid import *
 
-class SystemMessagesWalker(ListWalker):
-    def __init__(self, ja):
-        self.ja = ja
-        self.lines = []
+class MessagesWalker(ListWalker):
+    def __init__(self):
         self.last = 0
 
     def get_focus(self):
@@ -39,6 +37,20 @@ class SystemMessagesWalker(ListWalker):
         return self._get_at(position - 1)
 
     def _get_at(self, index):
+        return None, None
+
+
+class SystemMessagesWalker(MessagesWalker):
+    def __init__(self, ja):
+        self.ja = ja
+        self.lines = []
+        super().__init__()
+
+    def _format(self, message):
+        text = Text(">>> {0[2]}".format(message))
+        return text
+
+    def _get_at(self, index):
         if index < 0:
             return None, None
 
@@ -52,9 +64,40 @@ class SystemMessagesWalker(ListWalker):
 
         return self.lines[index], index
 
+class ChatWalker(MessagesWalker):
+    def __init__(self, chat):
+        self.chat = chat
+        self.lines = []
+        self.histlines = []
+        super().__init__()
+
     def _format(self, message):
-        text = Text(">>> {0[2]}".format(message))
+        text = Text("{0.text}".format(message))
         return text
+
+    def _get_at(self, index):
+        lines = self.lines
+        lindex = index
+        direction = 1
+        if index < 0:
+            lines = self.histlines
+            lindex = -index
+            direction = -1
+
+        if lindex >= len(lines):
+            cindex = len(lines)
+            while cindex <= lindex:
+                msg = self.chat.message(cindex * direction)
+                if not msg:
+                    return None, None
+                lines.append(self._format(msg))
+                cindex += 1
+            self.last = len(self.lines) - 1
+
+        if lindex >= len(lines):
+            return None, None
+
+        return lines[lindex], index
 
 class MessagesWidget(ListBox):
     def __init__(self, *args, **kwargs):
@@ -66,5 +109,9 @@ class MessagesWidget(ListBox):
 class SystemMessagesWidget(MessagesWidget):
     def __init__(self, ja):
         super().__init__(SystemMessagesWalker(ja))
+
+class ChatWidget(MessagesWidget):
+    def __init__(self, chat):
+        super().__init__(ChatWalker(chat))
 
 # vim:sw=4:ts=4:et
