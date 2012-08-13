@@ -26,13 +26,18 @@ class Message(object):
         self.resource = resource
 
 class Chat(object):
-    def __init__(self, message=None, contact=None):
+    def __init__(self, ja, message=None, contact=None):
         self.widget = None
         self.messages = []
+        self.ja = ja
         self.contact = None
+        self.connection = None
+        self.resource = None
         if message:
             self.messages.append(message)
             self.contact = message.contact
+            self.connection = message.connection
+            self.resource = message.resource
         elif contact:
             self.contact = contact
 
@@ -50,5 +55,27 @@ class Chat(object):
                 self.widget.update()
             return True
         return False
+
+    def select_contact(self):
+        if self.contact:
+            return self.contact
+
+    def select_connection(self, contact):
+        if self.connection and self.connection.connected:
+            return self.connection
+        return self.ja.select_connection(contact)
+
+    def select_resource(self, connection, contact):
+        return connection.select_resource(contact, self.resource)
+
+    def send(self, message):
+        contact = self.select_contact()
+        if not contact:
+            return
+        connection = self.select_connection(contact)
+        if not connection:
+            return
+        resource = self.select_resource(connection, contact)
+        connection.send_message(contact, resource, message)
 
 # vim:sw=4:ts=4:et

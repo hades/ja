@@ -19,6 +19,7 @@
 #
 
 class Connection(object):
-    pass
+    def __init__(self):
+        self.connected = False
 
 # vim:sw=4:ts=4:et

@@ -75,6 +75,7 @@ class Ja(object):
         self.exiting = False
         self.people = People()
         self.chats = []
+        self.current_chat = None
         self.print("This is ja version {}".format(version))
         self.print("Copyright © 2012 Edward Toroshchin <ja-project@hades.name>")
 
@@ -156,7 +157,10 @@ class Ja(object):
             else:
                 self.print("unknown command {}".format(command))
         else:
-            self.print("messages are not yet implemented")
+            if not self.current_chat:
+                self.print("this is not a chat window")
+            else:
+                self.current_chat.send(lines)
         if self.exiting:
             raise ExitMainLoop()
 
@@ -221,7 +225,7 @@ class Ja(object):
         for chat in self.chats:
             if chat.accept_message(message):
                 return
-        chat = Chat(message=message)
+        chat = Chat(ja=self, message=message)
         chat.widget = ChatWidget(chat)
         self.chats.append(chat)
         self.print("created new window {} for chat with {}".format(len(self.chats)-1, chat.contact))
@@ -231,15 +235,23 @@ class Ja(object):
         self.__setup_commands()
         return self.loop.run()
 
+    def select_connection(self, contact):
+        pass # TODO
+
     @command
     @redraw_screen
     def window(self, arg):
         """switch to window with given number"""
         if arg == "system":
             self.view.set_body(self.sysview)
+            self.current_chat = None
         else:
-            wid = int(arg)
-            self.view.set_body(self.chats[wid].widget)
+            try:
+                wid = int(arg)
+                self.view.set_body(self.chats[wid].widget)
+                self.current_chat = self.chats[wid]
+            except (ValueError, IndexError):
+                self.print("{} is not a window".format(arg))
 
 def ja(*args, **kwargs):
     if not hasattr(ja, 'instance'):
