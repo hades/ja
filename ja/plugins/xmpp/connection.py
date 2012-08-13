@@ -85,12 +85,21 @@ class XmppConnection(Connection):
         self._join_conn_thread()
         self.client.disconnect(wait=True)
 
+    def select_resource(self, contact, preferred_resource):
+        return preferred_resource # TODO
+
+    def send_message(self, contact, resource, message):
+        self.client.send_message(mto=contact.id,
+                                 mbody=message,
+                                 mtype='chat')
+
     def _handle_connected(self, data):
         self.client.process(block=False)
         self.conn_in_progress = False
 
     def _handle_disconnected(self, data):
         self.ja.print("xmpp: JID {} disconnected".format(self.jid))
+        self.connected = False
 
     def _handle_message(self, data):
         jid = data.get_from()
@@ -105,6 +114,7 @@ class XmppConnection(Connection):
         try:
             self.client.send_presence()
             self._parse_roster(self.client.get_roster()['roster'])
+            self.connected = True
         except IqError as e:
             self.ja.print("xmpp: error retrieving roster {}".format(e))
 
