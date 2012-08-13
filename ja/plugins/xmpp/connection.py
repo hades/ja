@@ -23,6 +23,7 @@ from threading import Thread
 from sleekxmpp import ClientXMPP
 from sleekxmpp.exceptions import IqError, IqTimeout
 
+from ja.chat import Message
 from ja.connection import Connection
 from ja.core import ja
 from ja.people import Contact
@@ -69,6 +70,7 @@ class XmppConnection(Connection):
             self.client.add_event_handler('connected', self._handle_connected)
             self.client.add_event_handler('session_start', self._handle_session_start)
             self.client.add_event_handler('disconnected', self._handle_disconnected)
+            self.client.add_event_handler('message', self._handle_message)
         if self.conn_in_progress:
             self.ja.print("xmpp: connection attempt in progress")
             return
@@ -90,10 +92,18 @@ class XmppConnection(Connection):
     def _handle_disconnected(self, data):
         self.ja.print("xmpp: JID {} disconnected".format(self.jid))
 
+    def _handle_message(self, data):
+        jid = data.get_from()
+        text = data['body']
+        contact = Contact(jid.bare, 'xmpp')
+        msg = Message(contact, self, text, jid.resource)
+        self.ja.receive_message(msg)
+
     @reconnect_on_timeout
     def _handle_session_start(self, data):
         self.ja.print("xmpp: connected to JID {}".format(self.jid))
         try:
+            self.client.send_presence()
             self._parse_roster(self.client.get_roster()['roster'])
         except IqError as e:
             self.ja.print("xmpp: error retrieving roster {}".format(e))
