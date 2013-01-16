@@ -1,0 +1,42 @@
+ Ja, the console IM client
+===========================
+
+As you probably can see already, it isn't a very mature project.
+
+If you want to play it, I suggest the following:
+
+ * install urwid-1.0.2 (http://pypi.python.org/pypi/urwid)
+ * install SleekXMPP (as fresh as possible) (https://github.com/fritzy/SleekXMPP/wiki)
+ * try running it:
+
+ $ PYTHONPATH=. python3 -m ja
+
+You should get something like this:
+
+>>> This is ja version 0.1-alpha1
+>>> Copyright © 2012 Edward Toroshchin <ja-project@hades.name>
+
+and an input line at the bottom.
+
+But there's more! You can even connect to some XMPP server:
+
+ * first load the plugin:
+
+> /load ja.plugins.xmpp
+>>> loaded plugin xmpp from ja.plugins.xmpp
+
+ * and then connect:
+
+> /xmpp.connect <your JID>
+Password for <your JID>: <type your password here>
+>>> xmpp: connected to JID <your JID>
+
+ * after that, if someone decides to say you something, a window appears:
+
+>>> created new window 0 for chat with <ja.people.Contact object at 0x7f25ec01f290>
+
+ * you can switch to it with the following command:
+
+> /window 0
+
+And that's really it. Enjoy. If you want to hack on it, I'll piss my pants out of sheer happiness.
